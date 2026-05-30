@@ -6,6 +6,7 @@ export type SourceStatus =
   | "pending"
   | "success"
   | "partial"
+  | "restricted"
   | "failed"
   | "stubbed";
 
@@ -43,4 +44,45 @@ export type AnalysisResponse = {
   ioc: IOCDetails;
   risk_report: RiskReport;
   source_results: SourceResult[];
+};
+
+export type NmapPreset =
+  | "quick_ports"
+  | "open_ports"
+  | "service_detection"
+  | "os_detection"
+  | "stealth_syn";
+
+export type NmapPortResult = {
+  port: number;
+  protocol: string;
+  state: string;
+  reason?: string | null;
+  service_name?: string | null;
+  product?: string | null;
+  version?: string | null;
+  extra_info?: string | null;
+  cpes: string[];
+};
+
+export type NmapOsMatch = {
+  name: string;
+  accuracy?: number | null;
+};
+
+export type NmapScanResponse = {
+  status: "completed" | "failed" | "not_available" | "timeout";
+  target: string;
+  normalized_target: string;
+  input_type: "ip" | "domain";
+  preset: NmapPreset;
+  command: string[];
+  started_at: string;
+  finished_at: string;
+  duration_seconds: number;
+  ports: NmapPortResult[];
+  os_matches: NmapOsMatch[];
+  warnings: string[];
+  summary: string;
+  error_message?: string | null;
 };

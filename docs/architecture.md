@@ -13,7 +13,7 @@ flowchart LR
     Backend --> FileUpload["Opaque file upload handler"]
     FileUpload --> Hash["SHA-256 hash only"]
     Hash --> VTFile["VirusTotal file lookup/upload"]
-    Orchestrator --> Sources["VirusTotal, AbuseIPDB, OTX, Shodan, Censys, URLScan, IPinfo"]
+    Orchestrator --> Sources["VirusTotal, AbuseIPDB, OTX, Shodan, URLScan, IPinfo"]
     Orchestrator --> Risk["Risk scoring engine"]
     Risk --> Report["Normalized report response"]
     Report --> Store["Current-session result store"]

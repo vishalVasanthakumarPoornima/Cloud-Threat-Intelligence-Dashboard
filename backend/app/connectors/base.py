@@ -35,6 +35,22 @@ class ConnectorHTTPError(RuntimeError):
         self.message = message
 
 
+def source_not_applicable(definition: ConnectorDefinition, classified) -> SourceResult:
+    return SourceResult(
+        source_name=definition.name,
+        status="not_applicable",
+        normalized={
+            "ioc_type": classified.input_type,
+            "connector": definition.slug,
+            "supported_ioc_types": sorted(definition.supported_ioc_types),
+        },
+        error_message=(
+            f"{definition.name} only runs for "
+            f"{', '.join(sorted(definition.supported_ioc_types))} indicators."
+        ),
+    )
+
+
 async def get_json(
     client: httpx.AsyncClient,
     source_name: str,

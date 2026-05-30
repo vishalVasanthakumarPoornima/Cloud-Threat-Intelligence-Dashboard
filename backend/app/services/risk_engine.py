@@ -73,7 +73,7 @@ def _points_for_source(result: SourceResult) -> int:
     if "urlscan" in source:
         verdict = str(normalized.get("verdict", "")).lower()
         return 15 if verdict == "malicious" else 8 if verdict == "suspicious" else 0
-    if "shodan" in source or "censys" in source:
+        if "shodan" in source:
         risky_services = int(normalized.get("risky_service_count", 0))
         return min(risky_services * 3, 10)
     if "ipinfo" in source:
@@ -85,6 +85,8 @@ def _points_for_source(result: SourceResult) -> int:
 def _reason_for_source(result: SourceResult, points: int) -> str:
     if result.status == "not_configured":
         return "Source API key is not configured."
+    if result.status == "restricted":
+        return "Source account plan does not allow this lookup."
     if result.status == "stubbed":
         return "Source connector is configured but not live yet."
     if result.status == "failed":

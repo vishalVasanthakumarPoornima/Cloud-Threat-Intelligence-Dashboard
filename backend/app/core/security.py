@@ -76,5 +76,7 @@ def _is_file_upload(request: Request) -> bool:
 
 def _is_analyze_request(request: Request) -> bool:
     return request.method == "POST" and (
-        request.url.path.endswith("/analyze") or request.url.path.endswith("/analyze/file")
+        request.url.path.endswith("/analyze")
+        or request.url.path.endswith("/analyze/file")
+        or request.url.path.endswith("/active-scan/nmap")
     )

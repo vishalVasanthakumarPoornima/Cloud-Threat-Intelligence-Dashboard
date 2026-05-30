@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     allow_private_iocs: bool = Field(default=False, alias="ALLOW_PRIVATE_IOCS")
     max_request_bytes: int = Field(default=8192, alias="MAX_REQUEST_BYTES")
     max_upload_file_bytes: int = Field(default=32 * 1024 * 1024, alias="MAX_UPLOAD_FILE_BYTES")
+    nmap_path: str | None = Field(default=None, alias="NMAP_PATH")
+    nmap_use_sudo: bool = Field(default=False, alias="NMAP_USE_SUDO")
+    nmap_sudo_path: str = Field(default="/usr/bin/sudo", alias="NMAP_SUDO_PATH")
     analyze_rate_limit_per_minute: int = Field(
         default=30,
         alias="ANALYZE_RATE_LIMIT_PER_MINUTE",
@@ -31,9 +34,6 @@ class Settings(BaseSettings):
     abuseipdb_api_key: str | None = Field(default=None, alias="ABUSEIPDB_API_KEY")
     otx_api_key: str | None = Field(default=None, alias="OTX_API_KEY")
     shodan_api_key: str | None = Field(default=None, alias="SHODAN_API_KEY")
-    censys_pat: str | None = Field(default=None, alias="CENSYS_PAT")
-    censys_api_id: str | None = Field(default=None, alias="CENSYS_API_ID")
-    censys_api_secret: str | None = Field(default=None, alias="CENSYS_API_SECRET")
     urlscan_api_key: str | None = Field(default=None, alias="URLSCAN_API_KEY")
     ipinfo_token: str | None = Field(default=None, alias="IPINFO_TOKEN")
 
@@ -52,6 +52,13 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False,
     )
+
+    @field_validator("database_url")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+psycopg://", 1)
+        return value
 
     @property
     def cors_origins(self) -> list[str]:

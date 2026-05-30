@@ -1,6 +1,5 @@
-from app.connectors import abuseipdb, censys, ipinfo, otx, shodan, urlscan, virustotal
+from app.connectors import abuseipdb, ipinfo, otx, shodan, urlscan, virustotal
 from app.connectors.abuseipdb import ABUSEIPDB
-from app.connectors.censys import CENSYS
 from app.connectors.ipinfo import IPINFO
 from app.connectors.otx import OTX
 from app.connectors.shodan import SHODAN
@@ -12,7 +11,6 @@ CONNECTOR_DEFINITIONS = (
     ABUSEIPDB,
     OTX,
     SHODAN,
-    CENSYS,
     URLSCAN,
     IPINFO,
 )
@@ -22,7 +20,6 @@ CONNECTOR_HANDLERS = {
     "abuseipdb": abuseipdb.analyze,
     "otx": otx.analyze,
     "shodan": shodan.analyze,
-    "censys": censys.analyze,
     "urlscan": urlscan.analyze,
     "ipinfo": ipinfo.analyze,
 }

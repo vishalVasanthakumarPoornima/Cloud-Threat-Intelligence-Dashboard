@@ -1,7 +1,7 @@
 # Backend
 
-FastAPI service for passive IOC enrichment. API keys are read from environment
-variables only and must never be exposed to the frontend.
+FastAPI service for IOC enrichment and authorized Nmap scans. API keys are read
+from environment variables only and must never be exposed to the frontend.
 
 ## Local setup
 
@@ -26,5 +26,9 @@ python -m unittest discover -s app/tests
 - `GET /api/health`
 - `POST /api/analyze`
 - `POST /api/analyze/file`
+- `POST /api/active-scan/nmap`
 - `GET /api/results/{analysis_id}` for current-session results
 - `GET /api/sources/status`
+
+Privileged Nmap presets can use `sudo -n nmap` when `NMAP_USE_SUDO=true`.
+See `../docs/nmap-privileged-mode.md` for the sudoers setup.

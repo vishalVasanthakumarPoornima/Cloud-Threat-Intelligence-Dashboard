@@ -70,7 +70,6 @@ def main() -> int:
             url="https://api.shodan.io/shodan/host/8.8.8.8",
             params={"key": env("SHODAN_API_KEY")},
         ),
-        censys_check(),
         Check(
             name="URLScan",
             required_env=("URLSCAN_API_KEY",),
@@ -127,25 +126,6 @@ def main() -> int:
 
 def env(name: str, default: str = "") -> str:
     return os.environ.get(name, default).strip()
-
-
-def censys_check() -> Check:
-    if env("CENSYS_PAT"):
-        return Check(
-            name="Censys Platform",
-            required_env=("CENSYS_PAT",),
-            method="GET",
-            url="https://api.platform.censys.io/v3/global/asset/host/8.8.8.8",
-            headers={"Authorization": f"Bearer {env('CENSYS_PAT')}", "Accept": "application/json"},
-        )
-    return Check(
-        name="Censys Legacy",
-        required_env=("CENSYS_API_ID", "CENSYS_API_SECRET"),
-        method="GET",
-        url="https://search.censys.io/api/v2/hosts/8.8.8.8",
-        headers={"Accept": "application/json"},
-        auth=(env("CENSYS_API_ID"), env("CENSYS_API_SECRET")),
-    )
 
 
 def ai_check() -> Check | None:
