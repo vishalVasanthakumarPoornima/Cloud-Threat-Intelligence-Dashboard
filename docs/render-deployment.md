@@ -23,6 +23,20 @@ Build Command: pip install -r requirements.txt
 Start Command: uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
+For hosted Nmap scans on Render, use Docker instead of the Python native
+runtime:
+
+```text
+Name: cloud-threat-intelligence-api
+Root Directory: backend
+Runtime: Docker
+```
+
+The backend Dockerfile installs the `nmap` system package. Render's native
+Python runtime does not include `nmap`, so active scans will return
+`not_available` unless the backend is deployed with Docker or another runtime
+that includes the `nmap` binary.
+
 Set these environment variables:
 
 ```text
@@ -85,6 +99,11 @@ Set this environment variable:
 VITE_API_BASE_URL=https://<backend-service>.onrender.com/api
 ```
 
+Set `VITE_API_BASE_URL` before the frontend build runs. Vite bakes this value
+into the static JavaScript bundle, so changing it later requires redeploying the
+frontend static site. Do not point it at the frontend URL; it must point at the
+FastAPI backend URL and end with `/api`.
+
 Deploy the frontend. After it finishes, copy the frontend URL and go back to the
 backend service environment variables.
 
@@ -100,7 +119,8 @@ Redeploy the backend after changing `ALLOWED_ORIGINS`.
 
 - If the backend says no open ports were detected, confirm the start command
   uses `--host 0.0.0.0 --port $PORT`.
-- If the frontend loads but analyses fail, check `VITE_API_BASE_URL`.
+- If the frontend loads but analyses fail, check `VITE_API_BASE_URL` and redeploy
+  the frontend after changing it.
 - If the browser blocks requests, check backend `ALLOWED_ORIGINS`.
 - If a provider card says `not_configured`, the corresponding API key is empty.
 - If Shodan says `restricted`, the key exists but the account plan does not
