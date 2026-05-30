@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import analyze, health, results, sources
+from app.api.routes import active_scan, analyze, health, results, sources
 from app.core.config import get_settings
 from app.core.security import (
     AnalyzeRateLimitMiddleware,
@@ -35,5 +35,6 @@ app.add_middleware(AnalyzeRateLimitMiddleware, settings=settings)
 
 app.include_router(health.router, prefix=settings.api_prefix, tags=["health"])
 app.include_router(analyze.router, prefix=settings.api_prefix, tags=["analysis"])
+app.include_router(active_scan.router, prefix=settings.api_prefix, tags=["active scan"])
 app.include_router(results.router, prefix=settings.api_prefix, tags=["results"])
 app.include_router(sources.router, prefix=settings.api_prefix, tags=["sources"])

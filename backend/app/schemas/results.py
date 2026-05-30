@@ -12,6 +12,7 @@ SourceStatus = Literal[
     "pending",
     "success",
     "partial",
+    "restricted",
     "failed",
     "stubbed",
 ]

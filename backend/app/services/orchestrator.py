@@ -27,13 +27,18 @@ async def analyze_indicator(
         headers={"User-Agent": "cloud-threat-intelligence-dashboard/0.1"},
         follow_redirects=True,
     ) as client:
-        source_results = await asyncio.gather(
+        gathered_results = await asyncio.gather(
             *[
                 _run_connector(definition, classified, settings, client)
                 for definition in CONNECTOR_DEFINITIONS
                 if classified.input_type in definition.supported_ioc_types
             ]
         )
+        source_results = [
+            result
+            for result in gathered_results
+            if result.status != "not_applicable"
+        ]
         risk_report = calculate_risk(source_results)
         risk_report.summary = await build_analyst_summary(
             classified=classified,
