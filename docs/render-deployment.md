@@ -96,13 +96,18 @@ Publish Directory: dist
 Set this environment variable:
 
 ```text
-VITE_API_BASE_URL=https://<backend-service>.onrender.com/api
+Key: VITE_API_BASE_URL
+Value: https://<backend-service>.onrender.com/api
 ```
 
 Set `VITE_API_BASE_URL` before the frontend build runs. Vite bakes this value
 into the static JavaScript bundle, so changing it later requires redeploying the
 frontend static site. Do not point it at the frontend URL; it must point at the
 FastAPI backend URL and end with `/api`.
+
+In Render's environment variable UI, do not paste
+`VITE_API_BASE_URL=https://...` into the value field. The key field should be
+`VITE_API_BASE_URL`, and the value field should be only the URL.
 
 Deploy the frontend. After it finishes, copy the frontend URL and go back to the
 backend service environment variables.
