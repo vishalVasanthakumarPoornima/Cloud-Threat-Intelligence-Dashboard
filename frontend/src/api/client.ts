@@ -49,12 +49,20 @@ export async function runNmapScan(payload: {
 function resolveApiBaseUrl() {
   const configured = import.meta.env.VITE_API_BASE_URL?.trim();
   if (configured) {
-    return stripTrailingSlashes(configured);
+    return stripTrailingSlashes(normalizeConfiguredApiBaseUrl(configured));
   }
   if (typeof window !== "undefined" && !isLocalHost(window.location.hostname)) {
     return `${window.location.origin}/api`;
   }
   return "http://localhost:8080/api";
+}
+
+function normalizeConfiguredApiBaseUrl(value: string) {
+  const assignmentPrefix = "VITE_API_BASE_URL=";
+  if (value.startsWith(assignmentPrefix)) {
+    return value.slice(assignmentPrefix.length).trim();
+  }
+  return value;
 }
 
 function stripTrailingSlashes(value: string) {
