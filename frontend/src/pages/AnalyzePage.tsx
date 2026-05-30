@@ -314,7 +314,7 @@ export function AnalyzePage() {
               </div>
               <div className="min-w-0">
                 <h1 className="truncate text-base font-semibold tracking-normal text-white md:text-lg">
-                  Cloud Threat Intelligence Dashboard
+                  Threat Intelligence Dashboard
                 </h1>
                 <p className="mt-0.5 text-xs font-medium uppercase text-zinc-400">Threat intelligence workbench</p>
               </div>
@@ -355,7 +355,7 @@ export function AnalyzePage() {
             <div data-scroll-reveal>
               <div>
                 <p className="max-w-2xl text-sm leading-6 text-zinc-300 md:text-base">
-                  Submit an IOC, compare live third-party intelligence, and get a transparent risk score with analyst-ready evidence.
+                  Submit an Indicator of Compromise (IOC), compare live third-party intelligence, and get a transparent risk score with analyst-ready evidence.
                 </p>
               </div>
             </div>
@@ -524,7 +524,7 @@ export function AnalyzePage() {
               <div className="p-4">
                 <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-zinc-950 dark:text-zinc-100">
                   <Database size={17} aria-hidden="true" />
-                  IOC Details
+                  Indicator of Compromise Details
                 </div>
                 {result ? (
                   <dl className="grid gap-3 text-sm">

@@ -8,7 +8,7 @@ only in backend environment variables or a deployment secret manager.
 flowchart LR
     User["User browser"] --> Frontend["React dashboard"]
     Frontend --> Backend["FastAPI backend"]
-    Backend --> Validator["IOC validator and classifier"]
+    Backend --> Validator["Indicator of Compromise (IOC) validator and classifier"]
     Validator --> Orchestrator["Async connector orchestrator"]
     Backend --> FileUpload["Opaque file upload handler"]
     FileUpload --> Hash["SHA-256 hash only"]
@@ -22,7 +22,8 @@ flowchart LR
 
 ## Security Boundaries
 
-- The backend validates and classifies every IOC before cache, database, or API work.
+- The backend validates and classifies every Indicator of Compromise (IOC)
+  before cache, database, or API work.
 - Private, loopback, link-local, multicast, and metadata IPs are blocked by default.
 - Current-session reports can be fetched by analysis ID after an analysis completes.
 - Database access is modeled through SQLAlchemy ORM classes for future persistent cache and history.
