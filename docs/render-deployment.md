@@ -60,8 +60,11 @@ DATABASE_URL=<Render internal database URL>
 After the backend deploys, verify:
 
 ```text
+https://<backend-service>.onrender.com/
 https://<backend-service>.onrender.com/api/health
 ```
+
+Both endpoints should return JSON with `"status": "ok"`.
 
 ## 2. Frontend Static Site
 
