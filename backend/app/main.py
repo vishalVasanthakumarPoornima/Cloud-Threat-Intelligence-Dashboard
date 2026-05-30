@@ -33,6 +33,17 @@ app.add_middleware(
 )
 app.add_middleware(AnalyzeRateLimitMiddleware, settings=settings)
 
+
+@app.get("/", tags=["health"])
+async def root_status():
+    return {
+        "status": "ok",
+        "service": settings.app_name,
+        "environment": settings.app_env,
+        "health": f"{settings.api_prefix}/health",
+    }
+
+
 app.include_router(health.router, prefix=settings.api_prefix, tags=["health"])
 app.include_router(analyze.router, prefix=settings.api_prefix, tags=["analysis"])
 app.include_router(active_scan.router, prefix=settings.api_prefix, tags=["active scan"])

@@ -73,7 +73,7 @@ def _points_for_source(result: SourceResult) -> int:
     if "urlscan" in source:
         verdict = str(normalized.get("verdict", "")).lower()
         return 15 if verdict == "malicious" else 8 if verdict == "suspicious" else 0
-        if "shodan" in source:
+    if "shodan" in source:
         risky_services = int(normalized.get("risky_service_count", 0))
         return min(risky_services * 3, 10)
     if "ipinfo" in source:
