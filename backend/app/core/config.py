@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "Cloud Threat Intelligence Dashboard"
+    app_name: str = "Threat Intelligence Dashboard"
     app_env: str = Field(default="development", alias="APP_ENV")
     api_prefix: str = Field(default="/api", alias="API_PREFIX")
     allowed_origins: str = Field(

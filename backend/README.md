@@ -1,7 +1,8 @@
 # Backend
 
-FastAPI service for IOC enrichment and authorized Nmap scans. API keys are read
-from environment variables only and must never be exposed to the frontend.
+FastAPI service for Indicator of Compromise (IOC) enrichment and authorized
+Nmap scans. API keys are read from environment variables only and must never be
+exposed to the frontend.
 
 ## Local setup
 

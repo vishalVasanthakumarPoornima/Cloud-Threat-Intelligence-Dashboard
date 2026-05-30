@@ -1,7 +1,7 @@
-# Cloud Threat Intelligence Dashboard
+# Threat Intelligence Dashboard
 
-A secure IOC enrichment and investigation dashboard built with FastAPI, React,
-TypeScript, Tailwind, SQLAlchemy, and PostgreSQL.
+A secure Indicator of Compromise (IOC) enrichment and investigation dashboard
+built with FastAPI, React, TypeScript, Tailwind, SQLAlchemy, and PostgreSQL.
 
 The project accepts an IP address, domain, URL, or file hash, classifies and
 validates the input, orchestrates server-side threat intelligence connectors,
@@ -13,7 +13,8 @@ dashboard.
 This repo now contains the foundation from the Codex build plan:
 
 - FastAPI backend with `/api/health`, `/api/analyze`, `/api/active-scan/nmap`, `/api/sources/status`, and result routes.
-- Strict IOC classifier covering IPs, domains, URLs, and hashes.
+- Strict Indicator of Compromise (IOC) classifier covering IPs, domains, URLs,
+  and hashes.
 - Default blocking for private/internal, loopback, link-local, multicast, and cloud metadata IPs.
 - SQLAlchemy data models for analysis requests, tool results, risk reports, cache entries, and audit logs.
 - Request size limits, basic rate limiting, safe CORS defaults, and security headers.

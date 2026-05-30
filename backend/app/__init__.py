@@ -1,1 +1,1 @@
-"""Cloud Threat Intelligence Dashboard backend."""
+"""Threat Intelligence Dashboard backend."""
