@@ -1,7 +1,18 @@
+import asyncio
 import unittest
+from unittest.mock import patch
 
 from app.core.config import Settings
-from app.services.nmap_scan import FALLBACK_PRESET_ARGS, build_nmap_command, parse_nmap_xml, should_use_sudo
+from app.schemas.active_scan import NmapPortResult, NmapScanRequest
+from app.services.classifier import ClassifiedIOC
+from app.services.nmap_scan import (
+    FALLBACK_PRESET_ARGS,
+    build_nmap_command,
+    fallback_tcp_ports,
+    parse_nmap_xml,
+    run_nmap_scan,
+    should_use_sudo,
+)
 
 
 SAMPLE_NMAP_XML = b"""<?xml version="1.0" encoding="UTF-8"?>
@@ -89,6 +100,50 @@ class NmapScanTests(unittest.TestCase):
         self.assertEqual(ports[0].cpes, ["cpe:/a:nginx:nginx:1.25.0"])
         self.assertEqual(os_matches[0].name, "Linux 5.x")
         self.assertEqual(os_matches[0].accuracy, 92)
+
+    def test_fallback_tcp_ports_prioritizes_common_ports(self):
+        ports = fallback_tcp_ports("quick_ports")
+
+        self.assertEqual(len(ports), 100)
+        self.assertEqual(ports[:3], (80, 443, 22))
+
+    def test_missing_nmap_uses_tcp_fallback(self):
+        async def fake_probe(*, target, port, semaphore):
+            if port == 443:
+                return NmapPortResult(
+                    port=443,
+                    protocol="tcp",
+                    state="open",
+                    reason="tcp-connect",
+                    service_name="https",
+                    cpes=[],
+                )
+            return None
+
+        request = NmapScanRequest(
+            target="93.184.216.34",
+            preset="quick_ports",
+            confirmed_authorized=True,
+            timeout_seconds=10,
+        )
+        classified = ClassifiedIOC("ip", "93.184.216.34", "93.184.216.34")
+
+        with patch("app.services.nmap_scan.shutil.which", return_value=None), patch(
+            "app.services.nmap_scan._probe_tcp_port",
+            side_effect=fake_probe,
+        ):
+            response = asyncio.run(
+                run_nmap_scan(
+                    request=request,
+                    classified=classified,
+                    settings=Settings(NMAP_PATH=""),
+                )
+            )
+
+        self.assertEqual(response.status, "completed")
+        self.assertEqual(response.command[0], "python-tcp-connect")
+        self.assertEqual(response.ports[0].port, 443)
+        self.assertIn("Nmap is not installed", response.warnings[0])
 
 
 if __name__ == "__main__":

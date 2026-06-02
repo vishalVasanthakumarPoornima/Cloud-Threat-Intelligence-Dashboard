@@ -5,6 +5,10 @@ This project deploys cleanly on Render as two services:
 - a FastAPI Web Service for `backend/`
 - a Vite Static Site for `frontend/`
 
+The repo includes `render.yaml` for a Blueprint deployment. It configures the
+backend as a Docker service so the backend image includes Nmap, and configures
+the frontend as a static site with its API URL pointed at the backend service.
+
 Render can also provide PostgreSQL. The current app only uses current-process
 result storage, but keeping a database attached is useful for a future persistent
 history upgrade.
@@ -34,8 +38,8 @@ Runtime: Docker
 
 The backend Dockerfile installs the `nmap` system package. Render's native
 Python runtime does not include `nmap`, so active scans will return
-`not_available` unless the backend is deployed with Docker or another runtime
-that includes the `nmap` binary.
+TCP fallback output instead of full Nmap output unless the backend is deployed
+with Docker or another runtime that includes the `nmap` binary.
 
 Set these environment variables:
 

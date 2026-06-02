@@ -1,5 +1,6 @@
 import asyncio
 import shutil
+import socket
 import time
 from datetime import datetime, timezone
 from html.parser import HTMLParser
@@ -20,6 +21,112 @@ FALLBACK_PRESET_ARGS: dict[str, list[str]] = {
     "stealth_syn": ["-Pn", "-T3", "-sT", "--top-ports", "1000", "--open"],
 }
 PRIVILEGED_PRESETS = {"os_detection", "stealth_syn"}
+TCP_FALLBACK_PRESETS = {"quick_ports", "open_ports", "service_detection", "os_detection", "stealth_syn"}
+TCP_FALLBACK_CONCURRENCY = 160
+TCP_FALLBACK_CONNECT_TIMEOUT_SECONDS = 1.25
+COMMON_TCP_PORTS = (
+    80,
+    443,
+    22,
+    21,
+    25,
+    3389,
+    110,
+    445,
+    139,
+    143,
+    53,
+    135,
+    3306,
+    8080,
+    1723,
+    111,
+    995,
+    993,
+    5900,
+    1025,
+    587,
+    8888,
+    199,
+    1720,
+    465,
+    548,
+    113,
+    81,
+    6001,
+    10000,
+    514,
+    5060,
+    179,
+    1026,
+    2000,
+    8443,
+    8000,
+    32768,
+    554,
+    26,
+    1433,
+    49152,
+    2001,
+    515,
+    8008,
+    49154,
+    1027,
+    5666,
+    646,
+    5000,
+    5631,
+    631,
+    49153,
+    8081,
+    2049,
+    88,
+    79,
+    5800,
+    106,
+    2121,
+    1110,
+    49155,
+    6000,
+    513,
+    990,
+    5357,
+    427,
+    49156,
+    543,
+    544,
+    5101,
+    144,
+    7,
+    389,
+    8009,
+    3128,
+    444,
+    9999,
+    5009,
+    7070,
+    5190,
+    3000,
+    5432,
+    1900,
+    3986,
+    13,
+    1029,
+    9,
+    6646,
+    49157,
+    1028,
+    873,
+    1755,
+    2717,
+    4899,
+    9100,
+    119,
+    37,
+    1000,
+    3001,
+    5001,
+)
 
 
 async def run_nmap_scan(
@@ -33,6 +140,13 @@ async def run_nmap_scan(
     nmap_path = settings.nmap_path or shutil.which("nmap")
 
     if not nmap_path:
+        if request.preset in TCP_FALLBACK_PRESETS:
+            return await _run_tcp_connect_fallback(
+                request=request,
+                classified=classified,
+                started_at=started_at,
+                start_time=start_time,
+            )
         return _failed_response(
             request=request,
             classified=classified,
@@ -176,6 +290,112 @@ def build_nmap_command(
 
 def should_use_sudo(preset: str, *, settings: Settings) -> bool:
     return settings.nmap_use_sudo and preset in PRIVILEGED_PRESETS
+
+
+async def _run_tcp_connect_fallback(
+    *,
+    request: NmapScanRequest,
+    classified: ClassifiedIOC,
+    started_at: datetime,
+    start_time: float,
+) -> NmapScanResponse:
+    ports_to_scan = fallback_tcp_ports(request.preset)
+    semaphore = asyncio.Semaphore(TCP_FALLBACK_CONCURRENCY)
+    tasks = [
+        asyncio.create_task(
+            _probe_tcp_port(
+                target=classified.normalized_value,
+                port=port,
+                semaphore=semaphore,
+            )
+        )
+        for port in ports_to_scan
+    ]
+    done, pending = await asyncio.wait(tasks, timeout=request.timeout_seconds)
+
+    for task in pending:
+        task.cancel()
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+
+    ports = []
+    for task in done:
+        if task.cancelled() or task.exception() is not None:
+            continue
+        result = task.result()
+        if result:
+            ports.append(result)
+    ports.sort(key=lambda item: item.port)
+
+    warnings = [_tcp_fallback_warning(request.preset)]
+    if pending:
+        warnings.append(
+            f"TCP fallback reached the {request.timeout_seconds} second timeout after checking "
+            f"{len(done)} of {len(tasks)} ports."
+        )
+    if not ports:
+        warnings.append("No open ports were found by the TCP fallback scan.")
+
+    return NmapScanResponse(
+        status="completed",
+        target=request.target,
+        normalized_target=classified.normalized_value,
+        input_type=classified.input_type,  # type: ignore[arg-type]
+        preset=request.preset,
+        command=["python-tcp-connect", "--ports", str(len(ports_to_scan)), classified.normalized_value],
+        started_at=started_at,
+        finished_at=datetime.now(timezone.utc),
+        duration_seconds=round(time.monotonic() - start_time, 2),
+        ports=ports,
+        os_matches=[],
+        warnings=warnings,
+        summary=_tcp_fallback_summary(request.preset, ports),
+        error_message=None,
+    )
+
+
+async def _probe_tcp_port(
+    *,
+    target: str,
+    port: int,
+    semaphore: asyncio.Semaphore,
+) -> NmapPortResult | None:
+    async with semaphore:
+        try:
+            _, writer = await asyncio.wait_for(
+                asyncio.open_connection(target, port),
+                timeout=TCP_FALLBACK_CONNECT_TIMEOUT_SECONDS,
+            )
+        except (OSError, asyncio.TimeoutError):
+            return None
+
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except OSError:
+            pass
+
+    return NmapPortResult(
+        port=port,
+        protocol="tcp",
+        state="open",
+        reason="tcp-connect",
+        service_name=_service_name(port),
+        cpes=[],
+    )
+
+
+def fallback_tcp_ports(preset: str) -> tuple[int, ...]:
+    count = 100 if preset == "quick_ports" else 1000
+    ordered_ports = list(dict.fromkeys((*COMMON_TCP_PORTS, *range(1, 1001))))
+    return tuple(ordered_ports[:count])
+
+
+def _service_name(port: int) -> str | None:
+    try:
+        return socket.getservbyport(port, "tcp")
+    except OSError:
+        return None
 
 
 async def _run_command(command: list[str], *, timeout_seconds: int) -> tuple[bytes, bytes, int | None, str | None]:
@@ -343,6 +563,8 @@ def _display_command(command: list[str]) -> list[str]:
         if nmap_index is None:
             return ["sudo", *command[1:]]
         return ["sudo", "-n", "nmap", *command[nmap_index + 1 :]]
+    if not (command[0].endswith("/nmap") or command[0] == "nmap"):
+        return command
     return ["nmap", *command[1:]]
 
 
@@ -358,4 +580,27 @@ def _summary(preset: str, ports: list[NmapPortResult], os_matches: list[NmapOsMa
 
     if preset == "os_detection" and os_matches:
         summary += f" Top OS guess: {os_matches[0].name}."
+    return summary
+
+
+def _tcp_fallback_warning(preset: str) -> str:
+    if preset == "service_detection":
+        detail = "Service names are inferred from well-known port numbers; product and version detection require Nmap."
+    elif preset == "os_detection":
+        detail = "OS fingerprinting requires Nmap, so the fallback only checks TCP port reachability."
+    elif preset == "stealth_syn":
+        detail = "SYN scan mode requires Nmap/root support, so the fallback uses TCP connect checks."
+    else:
+        detail = "Install Nmap or deploy the Docker backend for full Nmap output."
+    return f"Nmap is not installed in this backend environment. {detail}"
+
+
+def _tcp_fallback_summary(preset: str, ports: list[NmapPortResult]) -> str:
+    if not ports:
+        return "TCP fallback scan did not find open ports for this target and preset."
+    service_count = sum(1 for port in ports if port.service_name)
+    summary = f"TCP fallback found {len(ports)} open port{'s' if len(ports) != 1 else ''}"
+    if preset == "service_detection" and service_count:
+        summary += f" and inferred {service_count} common service name{'s' if service_count != 1 else ''}"
+    summary += "."
     return summary
