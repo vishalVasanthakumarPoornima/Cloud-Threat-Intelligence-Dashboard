@@ -29,6 +29,7 @@ python -m unittest discover -s app/tests
 - `POST /api/analyze/file`
 - `POST /api/active-scan/nmap`
 - `GET /api/results/{analysis_id}` for current-session results
+- `GET /api/results/{analysis_id}/report.pdf` for executive PDF reports
 - `GET /api/sources/status`
 
 Privileged Nmap presets can use `sudo -n nmap` when `NMAP_USE_SUDO=true`.
