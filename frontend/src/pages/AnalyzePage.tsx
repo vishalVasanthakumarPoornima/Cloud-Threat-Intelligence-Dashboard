@@ -6,6 +6,7 @@ import {
   Clock3,
   Cpu,
   Database,
+  Download,
   FileJson,
   FileUp,
   Github,
@@ -13,6 +14,7 @@ import {
   Instagram,
   Layers3,
   Linkedin,
+  Loader2,
   Mail,
   Moon,
   Network,
@@ -28,7 +30,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { analyzeFile, analyzeIndicator, runNmapScan } from "../api/client";
+import { analyzeFile, analyzeIndicator, downloadAnalysisReport, runNmapScan } from "../api/client";
 import { EvidenceTable } from "../components/EvidenceTable";
 import { RiskScoreCard } from "../components/RiskScoreCard";
 import { SourceStatusGrid } from "../components/SourceStatusGrid";
@@ -109,6 +111,8 @@ export function AnalyzePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResponse | null>(null);
+  const [isReportDownloading, setIsReportDownloading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   const [mode, setMode] = useState<AnalyzeMode>("ioc");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [theme, setTheme] = useState<ThemeMode>(getInitialTheme);
@@ -125,11 +129,14 @@ export function AnalyzePage() {
   const fileDragDepth = useRef(0);
   const scanTargetTouched = useRef(false);
   const lastScanAutofillAnalysisId = useRef<string | null>(null);
+  const resultAnalysisId = result?.analysis_id ?? null;
+  const resultInputType = result?.ioc.input_type ?? null;
+  const resultNormalizedValue = result?.ioc.normalized_value ?? "";
   const sourceCounts = getSourceCounts(result);
   const canSubmit = mode === "file" ? Boolean(selectedFile) && !isLoading : Boolean(ioc.trim()) && !isLoading;
   const canRunScan = Boolean(scanTarget.trim()) && isScanAuthorized && !isScanning;
 
-  useScrollReveal(result?.analysis_id ?? null);
+  useScrollReveal(resultAnalysisId);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -139,18 +146,18 @@ export function AnalyzePage() {
   }, [theme]);
 
   useEffect(() => {
-    if (!result || !["ip", "domain"].includes(result.ioc.input_type)) {
+    if (!resultAnalysisId || !["ip", "domain"].includes(resultInputType ?? "")) {
       return;
     }
-    if (lastScanAutofillAnalysisId.current !== result.analysis_id) {
-      lastScanAutofillAnalysisId.current = result.analysis_id;
+    if (lastScanAutofillAnalysisId.current !== resultAnalysisId) {
+      lastScanAutofillAnalysisId.current = resultAnalysisId;
       scanTargetTouched.current = false;
     }
     if (scanTargetTouched.current) {
       return;
     }
-    setScanTarget((current) => current || result.ioc.normalized_value);
-  }, [result?.analysis_id]);
+    setScanTarget((current) => current || resultNormalizedValue);
+  }, [resultAnalysisId, resultInputType, resultNormalizedValue]);
 
   useEffect(() => {
     let frame = 0;
@@ -188,6 +195,7 @@ export function AnalyzePage() {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
+    setReportError(null);
 
     try {
       const response = mode === "file" && selectedFile ? await analyzeFile(selectedFile) : await analyzeIndicator(ioc);
@@ -272,6 +280,23 @@ export function AnalyzePage() {
   function handleScanTargetChange(target: string) {
     scanTargetTouched.current = true;
     setScanTarget(target);
+  }
+
+  async function handleDownloadReport() {
+    if (!result) {
+      return;
+    }
+    setIsReportDownloading(true);
+    setReportError(null);
+
+    try {
+      const report = await downloadAnalysisReport(result.analysis_id);
+      saveBlob(report, reportFileName(result));
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : "Report download failed.");
+    } finally {
+      setIsReportDownloading(false);
+    }
   }
 
   async function runServiceFollowUp() {
@@ -489,6 +514,25 @@ export function AnalyzePage() {
             <span className="text-emerald-800 dark:text-emerald-200">
               {result.risk_report.severity} risk · {sourceCounts.success}/{sourceCounts.total} sources returned signal
             </span>
+            <button
+              type="button"
+              onClick={handleDownloadReport}
+              disabled={isReportDownloading}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-emerald-300/70 bg-white px-3 text-sm font-semibold text-emerald-950 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-500 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:text-emerald-600 sm:ml-auto dark:border-emerald-300/25 dark:bg-emerald-300/10 dark:text-emerald-50 dark:hover:bg-emerald-300/20"
+            >
+              {isReportDownloading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <Download size={16} aria-hidden="true" />}
+              {isReportDownloading ? "Preparing PDF" : "Download PDF"}
+            </button>
+          </div>
+        ) : null}
+
+        {reportError ? (
+          <div
+            className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm dark:border-amber-300/25 dark:bg-amber-300/10 dark:text-amber-100"
+            data-scroll-reveal
+            role="alert"
+          >
+            {reportError}
           </div>
         ) : null}
 
@@ -986,6 +1030,26 @@ function formatFileSize(size: number) {
     return `${(size / 1024).toFixed(1)} KB`;
   }
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function saveBlob(blob: Blob, filename: string) {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+}
+
+function reportFileName(result: AnalysisResponse) {
+  const target = sanitizeReportPart(result.ioc.normalized_value).slice(0, 48) || "indicator";
+  return `threat-report-${target}-${result.analysis_id.slice(0, 8)}.pdf`;
+}
+
+function sanitizeReportPart(value: string) {
+  return value.replace(/[^a-zA-Z0-9.-]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
 function getSourceCounts(result: AnalysisResponse | null) {

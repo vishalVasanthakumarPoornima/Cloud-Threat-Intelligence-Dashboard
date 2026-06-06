@@ -46,6 +46,21 @@ export async function runNmapScan(payload: {
   return parseJsonResponse<NmapScanResponse>(response, url);
 }
 
+export async function downloadAnalysisReport(analysisId: string): Promise<Blob> {
+  const url = `${API_BASE_URL}/results/${encodeURIComponent(analysisId)}/report.pdf`;
+  const response = await fetch(url, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    const payload = body ? parseUnknownBody(body) : null;
+    throw new Error(errorMessageFromPayload(payload, response, url));
+  }
+
+  return response.blob();
+}
+
 function resolveApiBaseUrl() {
   const configured = import.meta.env.VITE_API_BASE_URL?.trim();
   if (configured) {
@@ -96,6 +111,14 @@ function parseJsonBody(body: string, response: Response, url: string): unknown {
     throw new Error(
       `Backend returned a non-JSON response from ${url} with HTTP ${response.status}. ${preview || "The response body was empty."}`,
     );
+  }
+}
+
+function parseUnknownBody(body: string): unknown {
+  try {
+    return JSON.parse(body);
+  } catch {
+    return { detail: body.trim().slice(0, 120) };
   }
 }
 

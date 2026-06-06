@@ -12,7 +12,7 @@ dashboard.
 
 This repo now contains the foundation from the Codex build plan:
 
-- FastAPI backend with `/api/health`, `/api/analyze`, `/api/active-scan/nmap`, `/api/sources/status`, and result routes.
+- FastAPI backend with `/api/health`, `/api/analyze`, `/api/active-scan/nmap`, `/api/sources/status`, result routes, and executive PDF reports.
 - Strict Indicator of Compromise (IOC) classifier covering IPs, domains, URLs,
   and hashes.
 - Default blocking for private/internal, loopback, link-local, multicast, and cloud metadata IPs.
@@ -111,6 +111,12 @@ Fetch a current-session result:
 
 ```bash
 curl http://localhost:8080/api/results/<analysis_id>
+```
+
+Download an executive PDF report for a completed current-session result:
+
+```bash
+curl -o threat-report.pdf http://localhost:8080/api/results/<analysis_id>/report.pdf
 ```
 
 VirusTotal file check:
