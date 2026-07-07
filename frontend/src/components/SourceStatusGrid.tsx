@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, CircleDashed, KeyRound, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, CircleDashed, KeyRound, Loader2 } from "lucide-react";
 
 import type { SourceResult } from "../types/results";
 
@@ -34,12 +34,10 @@ export function SourceStatusGrid({ sources }: Props) {
                   <StatusIcon status={source.status} />
                 </span>
               </div>
-              <span className={`inline-flex rounded-md border px-2 py-1 text-xs font-semibold ${statusStyles[source.status]}`}>
-                {source.status.replace("_", " ")}
-              </span>
+              <SourceAvailabilityMessage source={source} />
               <SourceInsights source={source} />
               {source.error_message ? (
-                <p className="mt-3 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{source.error_message}</p>
+                <SourceErrorPanel message={source.error_message} />
               ) : null}
             </div>
           </div>
@@ -50,6 +48,18 @@ export function SourceStatusGrid({ sources }: Props) {
         </div>
       )}
     </div>
+  );
+}
+
+function SourceAvailabilityMessage({ source }: { source: SourceResult }) {
+  if (source.status === "success") {
+    return null;
+  }
+
+  return (
+    <p className={`rounded-md border px-3 py-2 text-sm leading-5 ${statusStyles[source.status]}`}>
+      {availabilityMessage(source)}
+    </p>
   );
 }
 
@@ -78,15 +88,51 @@ function SourceDetails({ details }: { details: Array<{ label: string; value: str
     return null;
   }
   return (
-    <dl className="mt-3 grid gap-2 text-xs">
-      {details.map((detail) => (
-        <div key={`${detail.label}-${detail.value}`} className="rounded-md border border-zinc-200/80 bg-zinc-50/80 px-2.5 py-2 dark:border-white/10 dark:bg-white/[0.04]">
-          <dt className="mb-1 font-semibold uppercase tracking-normal text-zinc-500 dark:text-zinc-400">{detail.label}</dt>
-          <dd className="break-words font-medium leading-5 text-zinc-800 dark:text-zinc-100">{detail.value}</dd>
-        </div>
-      ))}
-    </dl>
+    <details className="group mt-3 rounded-md border border-zinc-200/80 bg-zinc-50/80 p-2.5 text-xs dark:border-white/10 dark:bg-white/[0.04]">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold uppercase tracking-normal text-zinc-500 dark:text-zinc-400">
+        <span>Source details</span>
+        <ChevronDown className="shrink-0 transition group-open:rotate-180" size={15} aria-hidden="true" />
+      </summary>
+      <dl className="mt-2 grid gap-2">
+        {details.map((detail) => (
+          <div key={`${detail.label}-${detail.value}`} className="rounded-md border border-zinc-200/80 bg-white px-2.5 py-2 dark:border-white/10 dark:bg-slate-950">
+            <dt className="mb-1 font-semibold uppercase tracking-normal text-zinc-500 dark:text-zinc-400">{detail.label}</dt>
+            <dd className="break-words font-medium leading-5 text-zinc-800 dark:text-zinc-100">{detail.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
   );
+}
+
+function SourceErrorPanel({ message }: { message: string }) {
+  return (
+    <details className="group mt-3 rounded-md border border-rose-200 bg-rose-50/80 p-3 text-sm text-rose-900 dark:border-rose-400/30 dark:bg-rose-400/10 dark:text-rose-100">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold">
+        <span className="flex items-center gap-2">
+          <AlertTriangle size={15} aria-hidden="true" />
+          Error details
+        </span>
+        <ChevronDown className="shrink-0 transition group-open:rotate-180" size={16} aria-hidden="true" />
+      </summary>
+      <p className="mt-2 leading-5">{message}</p>
+    </details>
+  );
+}
+
+function availabilityMessage(source: SourceResult) {
+  const messages: Record<SourceResult["status"], string> = {
+    success: "",
+    partial: "This source returned partial data. Available details are shown below.",
+    restricted: "This source could not return full data because access is restricted.",
+    failed: "This source could not return data for this analysis.",
+    not_configured: "This source is not configured yet. Add its API key to enable results.",
+    not_applicable: "This source does not apply to this indicator type.",
+    pending: "This source is still waiting for results.",
+    stubbed: "This source is using local demo data.",
+  };
+
+  return messages[source.status];
 }
 
 function buildInsights(source: SourceResult) {

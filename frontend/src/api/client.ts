@@ -1,4 +1,4 @@
-import type { AnalysisResponse, NmapPreset, NmapScanResponse } from "../types/results";
+import type { AnalysisResponse, PortScanPreset, PortScanResponse } from "../types/results";
 
 const API_BASE_URL = resolveApiBaseUrl();
 
@@ -28,13 +28,13 @@ export async function analyzeFile(file: File): Promise<AnalysisResponse> {
   return parseJsonResponse<AnalysisResponse>(response, url);
 }
 
-export async function runNmapScan(payload: {
+export async function runPortScan(payload: {
   target: string;
-  preset: NmapPreset;
+  preset: PortScanPreset;
   confirmed_authorized: boolean;
   timeout_seconds: number;
-}): Promise<NmapScanResponse> {
-  const url = `${API_BASE_URL}/active-scan/nmap`;
+}): Promise<PortScanResponse> {
+  const url = `${API_BASE_URL}/active-scan/ports`;
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -43,7 +43,7 @@ export async function runNmapScan(payload: {
     body: JSON.stringify(payload),
   });
 
-  return parseJsonResponse<NmapScanResponse>(response, url);
+  return parseJsonResponse<PortScanResponse>(response, url);
 }
 
 export async function downloadAnalysisReport(analysisId: string): Promise<Blob> {

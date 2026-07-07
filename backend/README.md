@@ -1,8 +1,8 @@
 # Backend
 
 FastAPI service for Indicator of Compromise (IOC) enrichment and authorized
-Nmap scans. API keys are read from environment variables only and must never be
-exposed to the frontend.
+Python port scans. API keys are read from environment variables only and must
+never be exposed to the frontend.
 
 ## Local setup
 
@@ -27,10 +27,11 @@ python -m unittest discover -s app/tests
 - `GET /api/health`
 - `POST /api/analyze`
 - `POST /api/analyze/file`
-- `POST /api/active-scan/nmap`
+- `POST /api/active-scan/ports`
 - `GET /api/results/{analysis_id}` for current-session results
 - `GET /api/results/{analysis_id}/report.pdf` for executive PDF reports
 - `GET /api/sources/status`
 
-Privileged Nmap presets can use `sudo -n nmap` when `NMAP_USE_SUDO=true`.
-See `../docs/nmap-privileged-mode.md` for the sudoers setup.
+The active scanner uses Python TCP connect checks by default. The SYN preset
+uses Scapy when raw socket support is available and falls back to TCP connect
+checks otherwise.

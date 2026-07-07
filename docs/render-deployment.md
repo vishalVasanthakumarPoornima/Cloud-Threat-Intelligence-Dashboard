@@ -6,8 +6,8 @@ This project deploys cleanly on Render as two services:
 - a Vite Static Site for `frontend/`
 
 The repo includes `render.yaml` for a Blueprint deployment. It configures the
-backend as a Docker service so the backend image includes Nmap, and configures
-the frontend as a static site with its API URL pointed at the backend service.
+backend as a Docker service and the frontend as a static site with its API URL
+pointed at the backend service.
 
 Render can also provide PostgreSQL. The current app only uses current-process
 result storage, but keeping a database attached is useful for a future persistent
@@ -27,8 +27,7 @@ Build Command: pip install -r requirements.txt
 Start Command: uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-For hosted Nmap scans on Render, use Docker instead of the Python native
-runtime:
+The backend can run as Docker or as Render's Python runtime:
 
 ```text
 Name: cloud-threat-intelligence-api
@@ -36,10 +35,9 @@ Root Directory: backend
 Runtime: Docker
 ```
 
-The backend Dockerfile installs the `nmap` system package. Render's native
-Python runtime does not include `nmap`, so active scans will return
-TCP fallback output instead of full Nmap output unless the backend is deployed
-with Docker or another runtime that includes the `nmap` binary.
+Active port scans use Python TCP connect checks by default. The Scapy SYN
+preset may require raw socket support from the host runtime; when that is not
+available, the backend falls back to TCP connect checks.
 
 Set these environment variables:
 

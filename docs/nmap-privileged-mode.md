@@ -1,6 +1,10 @@
-# Privileged Nmap Mode
+# Legacy Privileged Nmap Mode
 
-Some Nmap presets need elevated privileges:
+The current dashboard active scanner uses Python TCP connect checks and optional
+Scapy SYN probing through `/api/active-scan/ports`. This page only documents the
+older Nmap compatibility path that remains in the repository for reference.
+
+Some legacy Nmap presets need elevated privileges:
 
 - OS info (`-O`)
 - SYN scan (`-sS`)

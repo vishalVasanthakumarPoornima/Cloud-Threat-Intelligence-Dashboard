@@ -46,14 +46,14 @@ export type AnalysisResponse = {
   source_results: SourceResult[];
 };
 
-export type NmapPreset =
+export type PortScanPreset =
   | "quick_ports"
   | "open_ports"
   | "service_detection"
   | "os_detection"
   | "stealth_syn";
 
-export type NmapPortResult = {
+export type PortScanPortResult = {
   port: number;
   protocol: string;
   state: string;
@@ -65,24 +65,29 @@ export type NmapPortResult = {
   cpes: string[];
 };
 
-export type NmapOsMatch = {
+export type PortScanOsMatch = {
   name: string;
   accuracy?: number | null;
 };
 
-export type NmapScanResponse = {
+export type PortScanResponse = {
   status: "completed" | "failed" | "not_available" | "timeout";
   target: string;
   normalized_target: string;
   input_type: "ip" | "domain";
-  preset: NmapPreset;
+  preset: PortScanPreset;
   command: string[];
   started_at: string;
   finished_at: string;
   duration_seconds: number;
-  ports: NmapPortResult[];
-  os_matches: NmapOsMatch[];
+  ports: PortScanPortResult[];
+  os_matches: PortScanOsMatch[];
   warnings: string[];
   summary: string;
   error_message?: string | null;
 };
+
+export type NmapPreset = PortScanPreset;
+export type NmapPortResult = PortScanPortResult;
+export type NmapOsMatch = PortScanOsMatch;
+export type NmapScanResponse = PortScanResponse;

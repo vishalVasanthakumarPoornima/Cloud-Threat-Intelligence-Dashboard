@@ -41,7 +41,7 @@ if [[ ! -x "${ROOT}/backend/.venv/bin/python" ]]; then
   python3 -m venv "${ROOT}/backend/.venv"
 fi
 
-if "${ROOT}/backend/.venv/bin/python" -c "import fastapi, httpx, sqlalchemy, dotenv, multipart" >/dev/null 2>&1; then
+if "${ROOT}/backend/.venv/bin/python" -c "import fastapi, httpx, sqlalchemy, dotenv, multipart, scapy" >/dev/null 2>&1; then
   cp "${ROOT}/backend/requirements.txt" "${ROOT}/backend/.venv/.requirements-installed"
 elif [[ ! -f "${ROOT}/backend/.venv/.requirements-installed" ]] || ! cmp -s "${ROOT}/backend/requirements.txt" "${ROOT}/backend/.venv/.requirements-installed"; then
   echo "Installing backend dependencies..."

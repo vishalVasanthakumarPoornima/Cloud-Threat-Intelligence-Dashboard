@@ -12,7 +12,7 @@ dashboard.
 
 This repo now contains the foundation from the Codex build plan:
 
-- FastAPI backend with `/api/health`, `/api/analyze`, `/api/active-scan/nmap`, `/api/sources/status`, result routes, and executive PDF reports.
+- FastAPI backend with `/api/health`, `/api/analyze`, `/api/active-scan/ports`, `/api/sources/status`, result routes, and executive PDF reports.
 - Strict Indicator of Compromise (IOC) classifier covering IPs, domains, URLs,
   and hashes.
 - Default blocking for private/internal, loopback, link-local, multicast, and cloud metadata IPs.
@@ -22,10 +22,9 @@ This repo now contains the foundation from the Codex build plan:
 - Dockerfile, Docker Compose PostgreSQL service, environment examples, and architecture documentation.
 - Live passive connectors for VirusTotal, AbuseIPDB, AlienVault OTX, Shodan,
   URLScan, and IPinfo.
-- Active Nmap presets for authorized IP/domain targets only, including quick
-  port checks, service detection, OS fingerprint attempts, and SYN scan mode.
-  Privileged presets can use passwordless `sudo -n nmap` when explicitly
-  enabled for a local demo.
+- Active Python port-scan presets for authorized IP/domain targets only,
+  including quick port checks, broader TCP checks, lightweight service hints,
+  and optional Scapy SYN probing when raw socket support is available.
 - Safe VirusTotal file checks that hash uploaded files first and treat samples
   as opaque bytes without local execution, extraction, or unpacking.
 - Current-session result lookup through `/api/results/{analysis_id}`.
@@ -156,12 +155,12 @@ File upload guardrail:
   hashed locally, queried by SHA-256 in VirusTotal first, and only submitted to
   VirusTotal when no existing report is available.
 
-Privileged Nmap setup:
+Active port scanning:
 
-- `NMAP_USE_SUDO=false` by default.
-- Set `NMAP_USE_SUDO=true` only in a local or locked-down backend environment.
-- Follow `docs/nmap-privileged-mode.md` before demoing OS detection or SYN scan
-  presets on systems that require root privileges.
+- `POST /api/active-scan/ports` runs the Python scanner after explicit user
+  authorization.
+- The SYN preset uses Scapy when the backend runtime has raw socket support and
+  falls back to TCP connect checks otherwise.
 
 Optional AI summaries:
 
@@ -194,6 +193,6 @@ PYTHONPATH=. python -m unittest discover -s app/tests
 ## Ethical Use
 
 This project performs enrichment through approved third-party APIs and includes
-active Nmap scans only when the user confirms authorization. It does not
+active Python port scans only when the user confirms authorization. It does not
 exploit, brute force, fuzz, or attack targets. Only analyze indicators and scan
 hosts you are authorized to investigate.
