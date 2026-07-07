@@ -2,6 +2,7 @@ import { type CSSProperties, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
+  ChevronDown,
   CheckCircle2,
   Clock3,
   Cpu,
@@ -26,15 +27,14 @@ import {
   Terminal,
   UploadCloud,
   X,
-  Zap,
   type LucideIcon,
 } from "lucide-react";
 
-import { analyzeFile, analyzeIndicator, downloadAnalysisReport, runNmapScan } from "../api/client";
+import { analyzeFile, analyzeIndicator, downloadAnalysisReport, runPortScan } from "../api/client";
 import { EvidenceTable } from "../components/EvidenceTable";
 import { RiskScoreCard } from "../components/RiskScoreCard";
 import { SourceStatusGrid } from "../components/SourceStatusGrid";
-import type { AnalysisResponse, NmapPreset, NmapScanResponse, Severity } from "../types/results";
+import type { AnalysisResponse, PortScanPreset, PortScanResponse, Severity } from "../types/results";
 
 type ThemeMode = "light" | "dark";
 type AnalyzeMode = "ioc" | "file";
@@ -54,7 +54,7 @@ const socialLinks: Array<{ label: string; href: string; icon: LucideIcon; tone: 
   },
   {
     label: "GitHub",
-    href: "https://github.com/vishalvasanthakumarpoornima",
+    href: "https://github.com/vishalvasanthakumarpoornima/Cloud-Threat-Intelligence-Dashboard",
     icon: Github,
     tone: "github",
   },
@@ -73,11 +73,11 @@ const socialToneClasses: Record<SocialTone, string> = {
   linkedin:
     "border-sky-300/45 bg-sky-600/25 text-sky-50 shadow-sky-500/10 hover:border-sky-200 hover:bg-sky-500/35 hover:text-white",
 };
-const nmapPresets: Array<{ id: NmapPreset; label: string; detail: string; icon: LucideIcon }> = [
+const portScanPresets: Array<{ id: PortScanPreset; label: string; detail: string; icon: LucideIcon }> = [
   {
     id: "quick_ports",
     label: "Quick ports",
-    detail: "Top 100 TCP ports",
+    detail: "Python TCP connect",
     icon: Network,
   },
   {
@@ -89,19 +89,19 @@ const nmapPresets: Array<{ id: NmapPreset; label: string; detail: string; icon: 
   {
     id: "service_detection",
     label: "Services",
-    detail: "Versions on open ports",
+    detail: "Port names and banners",
     icon: Terminal,
   },
   {
     id: "os_detection",
-    label: "OS info",
-    detail: "OS fingerprint attempt",
+    label: "Broad check",
+    detail: "Expanded TCP reachability",
     icon: Cpu,
   },
   {
     id: "stealth_syn",
-    label: "SYN scan",
-    detail: "Stealth-style TCP SYN",
+    label: "Scapy SYN",
+    detail: "Raw SYN when available",
     icon: AlertTriangle,
   },
 ];
@@ -120,12 +120,12 @@ export function AnalyzePage() {
   const [celebrationRun, setCelebrationRun] = useState(0);
   const [isFileDragging, setIsFileDragging] = useState(false);
   const [scanTarget, setScanTarget] = useState("");
-  const [scanPreset, setScanPreset] = useState<NmapPreset>("quick_ports");
+  const [scanPreset, setScanPreset] = useState<PortScanPreset>("quick_ports");
   const [scanTimeout, setScanTimeout] = useState(45);
   const [isScanAuthorized, setIsScanAuthorized] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
-  const [scanResult, setScanResult] = useState<NmapScanResponse | null>(null);
+  const [scanResult, setScanResult] = useState<PortScanResponse | null>(null);
   const fileDragDepth = useRef(0);
   const scanTargetTouched = useRef(false);
   const lastScanAutofillAnalysisId = useRef<string | null>(null);
@@ -133,6 +133,9 @@ export function AnalyzePage() {
   const resultInputType = result?.ioc.input_type ?? null;
   const resultNormalizedValue = result?.ioc.normalized_value ?? "";
   const sourceCounts = getSourceCounts(result);
+  const riskScoreSummary = result
+    ? `${result.risk_report.severity} risk · ${sourceCounts.success}/${sourceCounts.total} sources returned signal`
+    : "No analysis has been run yet.";
   const canSubmit = mode === "file" ? Boolean(selectedFile) && !isLoading : Boolean(ioc.trim()) && !isLoading;
   const canRunScan = Boolean(scanTarget.trim()) && isScanAuthorized && !isScanning;
 
@@ -257,13 +260,13 @@ export function AnalyzePage() {
     setError(null);
   }
 
-  async function handleNmapSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handlePortScanSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsScanning(true);
     setScanError(null);
 
     try {
-      const response = await runNmapScan({
+      const response = await runPortScan({
         target: scanTarget,
         preset: scanPreset,
         confirmed_authorized: isScanAuthorized,
@@ -271,7 +274,7 @@ export function AnalyzePage() {
       });
       setScanResult(response);
     } catch (err) {
-      setScanError(err instanceof Error ? err.message : "Nmap scan failed.");
+      setScanError(err instanceof Error ? err.message : "Port scan failed.");
     } finally {
       setIsScanning(false);
     }
@@ -308,7 +311,7 @@ export function AnalyzePage() {
     setScanError(null);
 
     try {
-      const response = await runNmapScan({
+      const response = await runPortScan({
         target: scanTarget,
         preset: "service_detection",
         confirmed_authorized: isScanAuthorized,
@@ -316,7 +319,7 @@ export function AnalyzePage() {
       });
       setScanResult(response);
     } catch (err) {
-      setScanError(err instanceof Error ? err.message : "Nmap service detection failed.");
+      setScanError(err instanceof Error ? err.message : "Service detection failed.");
     } finally {
       setIsScanning(false);
     }
@@ -526,19 +529,19 @@ export function AnalyzePage() {
           </div>
         ) : null}
 
+        <RiskScoreCard report={result?.risk_report ?? null} sourceSummary={riskScoreSummary} className="mb-4" />
+
+        {error ? (
+          <ExpandableErrorPanel title="Analysis could not complete" message={error} className="mb-4" />
+        ) : null}
+
         {reportError ? (
-          <div
-            className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm dark:border-amber-300/25 dark:bg-amber-300/10 dark:text-amber-100"
-            data-scroll-reveal
-            role="alert"
-          >
-            {reportError}
-          </div>
+          <ExpandableErrorPanel title="PDF report needs attention" message={reportError} tone="amber" className="mb-4" />
         ) : null}
 
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-scroll-reveal>
           <MetricCard icon={Radar} label="Severity" value={result?.risk_report.severity ?? "Ready"} tone="teal" />
-          <MetricCard icon={Zap} label="Score" value={result ? `${result.risk_report.score}/100` : "0/100"} tone="amber" />
+          <MetricCard icon={Layers3} label="Evidence" value={result ? `${result.risk_report.contributions.length} factors` : "Waiting"} tone="amber" />
           <MetricCard icon={Globe2} label="Sources" value={result ? `${sourceCounts.success}/${sourceCounts.total} live` : "Not run"} tone="cyan" />
           <MetricCard icon={Sparkles} label="Overview" value={result ? "Generated" : "Ready"} tone="rose" />
         </div>
@@ -556,20 +559,18 @@ export function AnalyzePage() {
           isScanning={isScanning}
           error={scanError}
           result={scanResult}
-          onSubmit={handleNmapSubmit}
+          onSubmit={handlePortScanSubmit}
           onRunServiceFollowUp={runServiceFollowUp}
         />
 
         <div className="grid min-w-0 gap-4 md:grid-cols-[360px_1fr]">
           <div className="min-w-0 space-y-4" data-scroll-reveal>
-            <RiskScoreCard report={result?.risk_report ?? null} />
-            <div className="effect-card overflow-hidden rounded-md border border-white/70 bg-white/[0.92] shadow-sm ring-1 ring-zinc-200/60 backdrop-blur dark:border-white/10 dark:bg-slate-950/85 dark:ring-white/10">
-              <div className="h-1 bg-gradient-to-r from-cyan-500 to-teal-500" />
+            <DisclosurePanel
+              icon={Database}
+              title="Indicator Details"
+              subtitle={result ? result.ioc.input_type.toUpperCase() : "No analysis selected"}
+            >
               <div className="p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-zinc-950 dark:text-zinc-100">
-                  <Database size={17} aria-hidden="true" />
-                  Indicator of Compromise Details
-                </div>
                 {result ? (
                   <dl className="grid gap-3 text-sm">
                     <div>
@@ -589,29 +590,40 @@ export function AnalyzePage() {
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">No analysis selected.</p>
                 )}
               </div>
-            </div>
+            </DisclosurePanel>
           </div>
 
           <div className="min-w-0 space-y-4" data-scroll-reveal>
-            {error ? (
-              <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900 dark:border-rose-500/40 dark:bg-rose-950/60 dark:text-rose-100">
-                {error}
-              </div>
-            ) : null}
-            <div className={`effect-card overflow-hidden rounded-md border border-white/70 bg-white/[0.92] shadow-sm ring-1 ring-zinc-200/60 backdrop-blur dark:border-white/10 dark:bg-slate-950/85 dark:ring-white/10 ${result ? "result-glow" : ""}`}>
-              <div className="h-1 bg-gradient-to-r from-amber-400 via-cyan-500 to-teal-500" />
+            <DisclosurePanel
+              icon={FileJson}
+              title="Analyst Summary"
+              subtitle={result ? "Generated from current evidence" : "Run an analysis first"}
+              isHighlighted={Boolean(result)}
+            >
               <div className="p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-zinc-950 dark:text-zinc-100">
-                  <FileJson size={17} aria-hidden="true" />
-                  Analyst Summary
-                </div>
                 <p className="text-sm leading-6 text-zinc-700 dark:text-zinc-300">
                   {result?.risk_report.summary ?? "Run an analysis to generate the first report."}
                 </p>
               </div>
-            </div>
-            <SourceStatusGrid sources={result?.source_results ?? []} />
-            <EvidenceTable report={result?.risk_report ?? null} />
+            </DisclosurePanel>
+            <DisclosurePanel
+              icon={Globe2}
+              title="Source Results"
+              subtitle={result ? `${sourceCounts.success}/${sourceCounts.total} returned signal` : "Waiting for analysis"}
+            >
+              <div className="p-4">
+                <SourceStatusGrid sources={result?.source_results ?? []} />
+              </div>
+            </DisclosurePanel>
+            <DisclosurePanel
+              icon={Layers3}
+              title="Score Evidence"
+              subtitle={result ? `${result.risk_report.contributions.length} scoring factors` : "No evidence yet"}
+            >
+              <div className="p-4">
+                <EvidenceTable report={result?.risk_report ?? null} />
+              </div>
+            </DisclosurePanel>
           </div>
         </div>
       </section>
@@ -638,8 +650,8 @@ function ActiveScanPanel({
 }: {
   target: string;
   onTargetChange: (target: string) => void;
-  preset: NmapPreset;
-  onPresetChange: (preset: NmapPreset) => void;
+  preset: PortScanPreset;
+  onPresetChange: (preset: PortScanPreset) => void;
   timeout: number;
   onTimeoutChange: (timeout: number) => void;
   isAuthorized: boolean;
@@ -647,7 +659,7 @@ function ActiveScanPanel({
   canRun: boolean;
   isScanning: boolean;
   error: string | null;
-  result: NmapScanResponse | null;
+  result: PortScanResponse | null;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   onRunServiceFollowUp: () => void;
 }) {
@@ -655,31 +667,41 @@ function ActiveScanPanel({
     result !== null && result.ports.length > 0 && result.preset !== "service_detection" && isAuthorized && !isScanning;
 
   return (
-    <section
-      className="effect-card mb-4 overflow-hidden rounded-md border border-white/70 bg-white/[0.92] shadow-sm ring-1 ring-zinc-200/60 backdrop-blur dark:border-white/10 dark:bg-slate-950/85 dark:ring-white/10"
+    <details
+      className="group mb-4 overflow-hidden rounded-md border border-white/70 bg-white/[0.92] shadow-sm ring-1 ring-zinc-200/60 backdrop-blur dark:border-white/10 dark:bg-slate-950/85 dark:ring-white/10"
       data-scroll-reveal
     >
-      <div className="border-b border-zinc-200 bg-gradient-to-r from-zinc-950 via-slate-900 to-cyan-950 p-4 text-white dark:border-white/10">
+      <summary className="cursor-pointer list-none border-b border-zinc-200 bg-gradient-to-r from-zinc-950 via-slate-900 to-cyan-950 p-4 text-white dark:border-white/10">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Terminal size={17} aria-hidden="true" />
-            Active Nmap Scan
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/10">
+              <Terminal size={17} aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">Python Port Scan</span>
+              <span className="block truncate text-xs text-cyan-100/80">
+                {result ? `${result.ports.length} open ports · ${result.duration_seconds}s` : "Open on demand for authorized targets"}
+              </span>
+            </span>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-md border border-amber-200/30 bg-amber-300/10 px-2.5 py-1 text-xs font-semibold text-amber-100">
-            <AlertTriangle size={14} aria-hidden="true" />
-            Authorized targets only
+          <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-2 rounded-md border border-amber-200/30 bg-amber-300/10 px-2.5 py-1 text-xs font-semibold text-amber-100 sm:inline-flex">
+              <AlertTriangle size={14} aria-hidden="true" />
+              Authorized targets only
+            </div>
+            <ChevronDown className="shrink-0 transition group-open:rotate-180" size={18} aria-hidden="true" />
           </div>
         </div>
-      </div>
+      </summary>
 
       <form onSubmit={onSubmit} className="grid gap-4 p-4">
         <div className="grid gap-3 lg:grid-cols-[1fr_160px]">
           <div className="grid gap-2">
-            <label className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" htmlFor="nmap-target">
+            <label className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" htmlFor="port-scan-target">
               Target
             </label>
             <input
-              id="nmap-target"
+              id="port-scan-target"
               value={target}
               onChange={(event) => onTargetChange(event.target.value)}
               className="h-11 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-950 shadow-sm outline-none ring-cyan-300 transition placeholder:text-zinc-400 focus:border-cyan-400 focus:ring-2 dark:border-white/10 dark:bg-slate-950 dark:text-zinc-50"
@@ -688,13 +710,13 @@ function ActiveScanPanel({
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" htmlFor="nmap-timeout">
+            <label className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400" htmlFor="port-scan-timeout">
               Timeout
             </label>
             <div className="flex h-11 items-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-950 shadow-sm dark:border-white/10 dark:bg-slate-950 dark:text-zinc-50">
               <Clock3 size={15} aria-hidden="true" />
               <input
-                id="nmap-timeout"
+                id="port-scan-timeout"
                 type="number"
                 min={10}
                 max={180}
@@ -710,7 +732,7 @@ function ActiveScanPanel({
         <div className="grid gap-2">
           <div className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Preset</div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-            {nmapPresets.map((item) => (
+            {portScanPresets.map((item) => (
               <ScanPresetButton
                 key={item.id}
                 preset={item}
@@ -738,7 +760,7 @@ function ActiveScanPanel({
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-cyan-400 dark:text-zinc-950 dark:hover:bg-cyan-300 dark:disabled:bg-zinc-700 dark:disabled:text-zinc-400"
           >
             <Terminal size={16} aria-hidden="true" />
-            {isScanning ? "Scanning" : "Run Nmap"}
+            {isScanning ? "Scanning" : "Run port scan"}
           </button>
           {canFollowUp ? (
             <button
@@ -759,13 +781,78 @@ function ActiveScanPanel({
       </form>
 
       {error ? (
-        <div className="mx-4 mb-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900 dark:border-rose-500/40 dark:bg-rose-950/60 dark:text-rose-100">
-          {error}
-        </div>
+        <ExpandableErrorPanel title="Port scan needs attention" message={error} className="mx-4 mb-4" />
       ) : null}
 
-      {result ? <NmapResults result={result} /> : null}
-    </section>
+      {result ? <PortScanResults result={result} /> : null}
+    </details>
+  );
+}
+
+function ExpandableErrorPanel({
+  title,
+  message,
+  tone = "rose",
+  className = "",
+}: {
+  title: string;
+  message: string;
+  tone?: "rose" | "amber";
+  className?: string;
+}) {
+  const toneClasses = {
+    rose: "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-500/40 dark:bg-rose-950/60 dark:text-rose-100",
+    amber: "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-300/25 dark:bg-amber-300/10 dark:text-amber-100",
+  };
+
+  return (
+    <details
+      className={`group rounded-md border p-3 text-sm shadow-sm ${toneClasses[tone]} ${className}`}
+      role="alert"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold">
+        <span className="flex items-center gap-2">
+          <AlertTriangle size={16} aria-hidden="true" />
+          {title}
+        </span>
+        <ChevronDown className="shrink-0 transition group-open:rotate-180" size={16} aria-hidden="true" />
+      </summary>
+      <p className="mt-2 leading-6">{message}</p>
+    </details>
+  );
+}
+
+function DisclosurePanel({
+  icon: Icon,
+  title,
+  subtitle,
+  children,
+  isHighlighted = false,
+}: {
+  icon: LucideIcon;
+  title: string;
+  subtitle: string;
+  children: React.ReactNode;
+  isHighlighted?: boolean;
+}) {
+  return (
+    <details
+      className={`group overflow-hidden rounded-md border border-white/70 bg-white/[0.92] shadow-sm ring-1 ring-zinc-200/60 backdrop-blur dark:border-white/10 dark:bg-slate-950/85 dark:ring-white/10 ${isHighlighted ? "result-glow" : ""}`}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 border-b border-zinc-200 bg-gradient-to-r from-zinc-50 via-cyan-50 to-amber-50 p-4 dark:border-white/10 dark:from-slate-900 dark:via-cyan-950/60 dark:to-amber-950/30">
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-200 bg-white text-cyan-700 dark:border-white/10 dark:bg-white/5 dark:text-cyan-200">
+            <Icon size={17} aria-hidden="true" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-zinc-950 dark:text-zinc-100">{title}</span>
+            <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">{subtitle}</span>
+          </span>
+        </span>
+        <ChevronDown className="shrink-0 text-zinc-500 transition group-open:rotate-180 dark:text-zinc-300" size={17} aria-hidden="true" />
+      </summary>
+      {children}
+    </details>
   );
 }
 
@@ -774,7 +861,7 @@ function ScanPresetButton({
   isActive,
   onClick,
 }: {
-  preset: { id: NmapPreset; label: string; detail: string; icon: LucideIcon };
+  preset: { id: PortScanPreset; label: string; detail: string; icon: LucideIcon };
   isActive: boolean;
   onClick: () => void;
 }) {
@@ -799,7 +886,7 @@ function ScanPresetButton({
   );
 }
 
-function NmapResults({ result }: { result: NmapScanResponse }) {
+function PortScanResults({ result }: { result: PortScanResponse }) {
   return (
     <div className="border-t border-zinc-200 p-4 dark:border-white/10">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

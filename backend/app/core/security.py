@@ -78,5 +78,6 @@ def _is_analyze_request(request: Request) -> bool:
     return request.method == "POST" and (
         request.url.path.endswith("/analyze")
         or request.url.path.endswith("/analyze/file")
+        or request.url.path.endswith("/active-scan/ports")
         or request.url.path.endswith("/active-scan/nmap")
     )

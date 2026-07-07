@@ -10,6 +10,7 @@ NmapPreset = Literal[
     "os_detection",
     "stealth_syn",
 ]
+PortScanPreset = NmapPreset
 ActiveScanStatus = Literal["completed", "failed", "not_available", "timeout"]
 
 
@@ -61,3 +62,9 @@ class NmapScanResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     summary: str
     error_message: str | None = None
+
+
+PortScanRequest = NmapScanRequest
+PortScanResponse = NmapScanResponse
+PortScanPortResult = NmapPortResult
+PortScanOsMatch = NmapOsMatch
